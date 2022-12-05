@@ -15,9 +15,31 @@
  */
 package org.apache.ibatis.submitted.record_type;
 
+/*
 public record Property(int id, String value, String URL) {
   public String value() {
     // Differentiate between method call and field access
     return value + "!";
+  }
+}
+*/
+public class Property {
+  private final int id;
+  private final String value;
+  private final String url;
+
+  Property(int id, String value, String URL) {
+
+    this.id = id;
+    this.value = value;
+    url = URL;
+  }
+  public String value() {
+    // Differentiate between method call and field access
+    return value + "!";
+  }
+
+  public String URL() {
+    return url;
   }
 }

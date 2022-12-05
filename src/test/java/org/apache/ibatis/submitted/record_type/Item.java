@@ -15,5 +15,22 @@
  */
 package org.apache.ibatis.submitted.record_type;
 
-public record Item(Integer id, Property property) {
+/*public record Item(Integer id, Property property) {
+}*/
+public class Item {
+    private final Integer id;
+    private final Property property;
+
+    Item(Integer id, Property property) {
+        this.id = id;
+        this.property = property;
+    }
+
+    public Integer id() {
+        return id;
+    }
+
+    public Property property() {
+        return property;
+    }
 }
