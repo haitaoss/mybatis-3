@@ -58,7 +58,9 @@ public class MapperMethod {
     Object result;
     switch (command.getType()) {
       case INSERT: {
+        // 转换参数
         Object param = method.convertArgsToSqlCommandParam(args);
+        // 使用 sqlSession 干活
         result = rowCountResult(sqlSession.insert(command.getName(), param));
         break;
       }

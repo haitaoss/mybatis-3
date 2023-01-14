@@ -147,11 +147,14 @@ public class TypeAliasRegistry {
   }
 
   public void registerAlias(Class<?> type) {
+    // 就是类名
     String alias = type.getSimpleName();
+    // 使用 @Alias 可以指定别名
     Alias aliasAnnotation = type.getAnnotation(Alias.class);
     if (aliasAnnotation != null) {
       alias = aliasAnnotation.value();
     }
+    // 会将 alias 变成大写，然后作为key
     registerAlias(alias, type);
   }
 

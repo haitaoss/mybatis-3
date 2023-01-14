@@ -41,6 +41,7 @@ public class DynamicSqlSource implements SqlSource {
     Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
     SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
     BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+    // 设置附加的参数
     context.getBindings().forEach(boundSql::setAdditionalParameter);
     return boundSql;
   }

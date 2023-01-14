@@ -29,7 +29,10 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.TransactionIsolationLevel;
 import org.apache.ibatis.transaction.Transaction;
 import org.apache.ibatis.transaction.TransactionFactory;
+import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.apache.ibatis.transaction.managed.ManagedTransactionFactory;
+
+import javax.sql.DataSource;
 
 /**
  * @author Clinton Begin
@@ -91,9 +94,20 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     Transaction tx = null;
     try {
       final Environment environment = configuration.getEnvironment();
+      // 拿到 environment 配置的事务工厂
       final TransactionFactory transactionFactory = getTransactionFactoryFromEnvironment(environment);
+      /**
+       * 开启一个事务
+       * {@link JdbcTransactionFactory#newTransaction(DataSource, TransactionIsolationLevel, boolean)}
+       * */
       tx = transactionFactory.newTransaction(environment.getDataSource(), level, autoCommit);
+      /**
+       * 通过事务和ExecutorType 得到一个 Executor
+       *
+       * 这里就设置到 Mybatis的缓存，和插件的引用
+       * */
       final Executor executor = configuration.newExecutor(tx, execType);
+      // 创建一个 SqlSession
       return new DefaultSqlSession(configuration, executor, autoCommit);
     } catch (Exception e) {
       closeTransaction(tx); // may have fetched a connection so lets call close()

@@ -1,0 +1,130 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class BoundSql {
+  - additionalParameters: Map<String, Object>
+  - sql: String
+  - parameterMappings: List<ParameterMapping>
+  - parameterObject: Object
+  - metaParameters: MetaObject
+  + getAdditionalParameters(): Map<String, Object>
+  + getSql(): String
+  + getParameterObject(): Object
+  + setAdditionalParameter(String, Object): void
+  + hasAdditionalParameter(String): boolean
+  + getAdditionalParameter(String): Object
+  + getParameterMappings(): List<ParameterMapping>
+}
+class ChooseSqlNode {
+  - defaultSqlNode: SqlNode
+  - ifSqlNodes: List<SqlNode>
+  + apply(DynamicContext): boolean
+}
+class DynamicSqlSource {
+  - configuration: Configuration
+  - rootSqlNode: SqlNode
+  + getBoundSql(Object): BoundSql
+}
+class ForEachSqlNode {
+  - close: String
+  - contents: SqlNode
+  - item: String
+  - evaluator: ExpressionEvaluator
+  - separator: String
+  - collectionExpression: String
+  - index: String
+  - configuration: Configuration
+  - open: String
+  + ITEM_PREFIX: String
+  - nullable: Boolean
+  - applyIndex(DynamicContext, Object, int): void
+  - applyItem(DynamicContext, Object, int): void
+  + apply(DynamicContext): boolean
+  - applyClose(DynamicContext): void
+  - itemizeItem(String, int): String
+  - applyOpen(DynamicContext): void
+}
+class IfSqlNode {
+  - evaluator: ExpressionEvaluator
+  - contents: SqlNode
+  - test: String
+  + apply(DynamicContext): boolean
+}
+interface LanguageDriver << interface >> {
+  + createSqlSource(Configuration, String, Class<?>): SqlSource
+  + createParameterHandler(MappedStatement, Object, BoundSql): ParameterHandler
+  + createSqlSource(Configuration, XNode, Class<?>): SqlSource
+}
+class MixedSqlNode {
+  - contents: List<SqlNode>
+  + apply(DynamicContext): boolean
+}
+class RawSqlSource {
+  - sqlSource: SqlSource
+  - getSql(Configuration, SqlNode): String
+  + getBoundSql(Object): BoundSql
+}
+class SetSqlNode {
+  - COMMA: List<String>
+}
+interface SqlNode << interface >> {
+  + apply(DynamicContext): boolean
+}
+interface SqlSource << interface >> {
+  + getBoundSql(Object): BoundSql
+}
+class StaticTextSqlNode {
+  - text: String
+  + apply(DynamicContext): boolean
+}
+class TextSqlNode {
+  - injectionFilter: Pattern
+  - text: String
+  + apply(DynamicContext): boolean
+  - createParser(TokenHandler): GenericTokenParser
+  + isDynamic(): boolean
+}
+class TrimSqlNode {
+  - suffix: String
+  - suffixesToOverride: List<String>
+  - contents: SqlNode
+  - prefixesToOverride: List<String>
+  - prefix: String
+  - configuration: Configuration
+  - parseOverrides(String): List<String>
+  + apply(DynamicContext): boolean
+}
+class VarDeclSqlNode {
+  - expression: String
+  - name: String
+  + apply(DynamicContext): boolean
+}
+class WhereSqlNode {
+  - prefixList: List<String>
+}
+class XMLLanguageDriver {
+  + createSqlSource(Configuration, XNode, Class<?>): SqlSource
+  + createSqlSource(Configuration, String, Class<?>): SqlSource
+  + createParameterHandler(MappedStatement, Object, BoundSql): ParameterHandler
+}
+
+ChooseSqlNode      -[#008200,dashed]-^  SqlNode
+DynamicSqlSource   -[#008200,dashed]-^  SqlSource
+ForEachSqlNode     -[#008200,dashed]-^  SqlNode
+IfSqlNode          -[#008200,dashed]-^  SqlNode
+MixedSqlNode       -[#008200,dashed]-^  SqlNode
+RawSqlSource       -[#008200,dashed]-^  SqlSource
+SetSqlNode         -[#000082,plain]-^  TrimSqlNode
+StaticTextSqlNode  -[#008200,dashed]-^  SqlNode
+TextSqlNode        -[#008200,dashed]-^  SqlNode
+TrimSqlNode        -[#008200,dashed]-^  SqlNode
+VarDeclSqlNode     -[#008200,dashed]-^  SqlNode
+WhereSqlNode       -[#000082,plain]-^  TrimSqlNode
+XMLLanguageDriver  -[#008200,dashed]-^  LanguageDriver
+LanguageDriver *-- SqlSource
+SqlSource *-- BoundSql
+DynamicSqlSource *-- SqlNode
+@enduml

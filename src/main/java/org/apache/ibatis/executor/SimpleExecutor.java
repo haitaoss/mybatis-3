@@ -15,78 +15,107 @@
  */
 package org.apache.ibatis.executor;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.ibatis.cursor.Cursor;
+import org.apache.ibatis.executor.statement.BaseStatementHandler;
+import org.apache.ibatis.executor.statement.PreparedStatementHandler;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.logging.Log;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.scripting.defaults.DefaultParameterHandler;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.transaction.Transaction;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @author Clinton Begin
  */
 public class SimpleExecutor extends BaseExecutor {
 
-  public SimpleExecutor(Configuration configuration, Transaction transaction) {
-    super(configuration, transaction);
-  }
-
-  @Override
-  public int doUpdate(MappedStatement ms, Object parameter) throws SQLException {
-    Statement stmt = null;
-    try {
-      Configuration configuration = ms.getConfiguration();
-      StatementHandler handler = configuration.newStatementHandler(this, ms, parameter, RowBounds.DEFAULT, null, null);
-      stmt = prepareStatement(handler, ms.getStatementLog());
-      return handler.update(stmt);
-    } finally {
-      closeStatement(stmt);
+    public SimpleExecutor(Configuration configuration, Transaction transaction) {
+        super(configuration, transaction);
     }
-  }
 
-  @Override
-  public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
-    Statement stmt = null;
-    try {
-      Configuration configuration = ms.getConfiguration();
-      StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
-      stmt = prepareStatement(handler, ms.getStatementLog());
-      return handler.query(stmt, resultHandler);
-    } finally {
-      closeStatement(stmt);
+    @Override
+    public int doUpdate(MappedStatement ms, Object parameter) throws SQLException {
+        Statement stmt = null;
+        try {
+            Configuration configuration = ms.getConfiguration();
+            StatementHandler handler = configuration.newStatementHandler(
+                    this, ms, parameter, RowBounds.DEFAULT, null, null);
+            stmt = prepareStatement(handler, ms.getStatementLog());
+            return handler.update(stmt);
+        } finally {
+            closeStatement(stmt);
+        }
     }
-  }
 
-  @Override
-  protected <E> Cursor<E> doQueryCursor(MappedStatement ms, Object parameter, RowBounds rowBounds, BoundSql boundSql) throws SQLException {
-    Configuration configuration = ms.getConfiguration();
-    StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, null, boundSql);
-    Statement stmt = prepareStatement(handler, ms.getStatementLog());
-    Cursor<E> cursor = handler.queryCursor(stmt);
-    stmt.closeOnCompletion();
-    return cursor;
-  }
+    @Override
+    public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler,
+                               BoundSql boundSql) throws SQLException {
+        Statement stmt = null;
+        try {
+            Configuration configuration = ms.getConfiguration();
+            /**
+             * 生成 StatementHandler。默认是这个 {@link PreparedStatementHandler}
+             * 并应用插件，给 StatementHandler 进行代理。
+             * */
+            StatementHandler handler = configuration.newStatementHandler(
+                    wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
+            /**
+             * 准备Statement：
+             * 1. 生成 Statement 对象
+             * 2. 给 Statement 对象设置参数（比如 {@link PreparedStatement#setNull(int, int)} ）
+             * */
+            stmt = prepareStatement(handler, ms.getStatementLog());
+            // 执行
+            return handler.query(stmt, resultHandler);
+        } finally {
+            // 释放资源
+            closeStatement(stmt);
+        }
+    }
 
-  @Override
-  public List<BatchResult> doFlushStatements(boolean isRollback) {
-    return Collections.emptyList();
-  }
+    @Override
+    protected <E> Cursor<E> doQueryCursor(MappedStatement ms, Object parameter, RowBounds rowBounds,
+                                          BoundSql boundSql) throws SQLException {
+        Configuration configuration = ms.getConfiguration();
+        StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, null, boundSql);
+        Statement stmt = prepareStatement(handler, ms.getStatementLog());
+        Cursor<E> cursor = handler.queryCursor(stmt);
+        stmt.closeOnCompletion();
+        return cursor;
+    }
 
-  private Statement prepareStatement(StatementHandler handler, Log statementLog) throws SQLException {
-    Statement stmt;
-    Connection connection = getConnection(statementLog);
-    stmt = handler.prepare(connection, transaction.getTimeout());
-    handler.parameterize(stmt);
-    return stmt;
-  }
+    @Override
+    public List<BatchResult> doFlushStatements(boolean isRollback) {
+        return Collections.emptyList();
+    }
+
+    private Statement prepareStatement(StatementHandler handler, Log statementLog) throws SQLException {
+        Statement stmt;
+        // 通过事务获取连接
+        Connection connection = getConnection(statementLog);
+        /**
+         * 生成 Statement 对象
+         * {@link BaseStatementHandler#prepare(Connection, Integer)}
+         * */
+        stmt = handler.prepare(connection, transaction.getTimeout());
+        /**
+         * 设置参数给 Statement，经过这一步之后，已经设置好参数了，也就是sql是完整的了
+         * {@link PreparedStatementHandler#parameterize(Statement)}
+         * {@link DefaultParameterHandler#setParameters(PreparedStatement)}
+         * */
+        handler.parameterize(stmt);
+        return stmt;
+    }
 
 }

@@ -334,6 +334,7 @@ public final class TypeHandlerRegistry {
   @SuppressWarnings("unchecked")
   public <T> void register(TypeHandler<T> typeHandler) {
     boolean mappedTypeFound = false;
+    // 查找类上的 @MappedTypes
     MappedTypes mappedTypes = typeHandler.getClass().getAnnotation(MappedTypes.class);
     if (mappedTypes != null) {
       for (Class<?> handledType : mappedTypes.value()) {
@@ -341,6 +342,9 @@ public final class TypeHandlerRegistry {
         mappedTypeFound = true;
       }
     }
+    /**
+     * typeHandler 是这种 {@link TypeReference} 类型的，也可以
+     * */
     // @since 3.1.0 - try to auto-discover the mapped type
     if (!mappedTypeFound && typeHandler instanceof TypeReference) {
       try {
@@ -352,6 +356,9 @@ public final class TypeHandlerRegistry {
       }
     }
     if (!mappedTypeFound) {
+      /**
+       * 否则就是 null 了，null并不会注册到 {@link TypeHandlerRegistry#typeHandlerMap} 属性中
+       * */
       register((Class<T>) null, typeHandler);
     }
   }
@@ -389,6 +396,7 @@ public final class TypeHandlerRegistry {
   }
 
   private void register(Type javaType, JdbcType jdbcType, TypeHandler<?> handler) {
+    // 指定了 javaType
     if (javaType != null) {
       Map<JdbcType, TypeHandler<?>> map = typeHandlerMap.get(javaType);
       if (map == null || map == NULL_TYPE_HANDLER_MAP) {
@@ -462,9 +470,12 @@ public final class TypeHandlerRegistry {
 
   public void register(String packageName) {
     ResolverUtil<Class<?>> resolverUtil = new ResolverUtil<>();
+    // 递归查找包 packageName 中 是 TypeHandler 类型的 class
     resolverUtil.find(new ResolverUtil.IsA(TypeHandler.class), packageName);
     Set<Class<? extends Class<?>>> handlerSet = resolverUtil.getClasses();
+    // 遍历报下的类（会递归）
     for (Class<?> type : handlerSet) {
+      // 不是匿名类 && 不是接口 && 不是抽象类
       //Ignore inner classes and interfaces (including package-info.java) and abstract classes
       if (!type.isAnonymousClass() && !type.isInterface() && !Modifier.isAbstract(type.getModifiers())) {
         register(type);

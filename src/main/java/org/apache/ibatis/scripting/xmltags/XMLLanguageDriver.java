@@ -46,6 +46,11 @@ public class XMLLanguageDriver implements LanguageDriver {
 
   @Override
   public SqlSource createSqlSource(Configuration configuration, String script, Class<?> parameterType) {
+    //
+    /**
+     * <script> select * from a <where> and 1= 1</where> </script>
+     * select * from a where 1 = 1
+     * */
     // issue #3
     if (script.startsWith("<script>")) {
       XPathParser parser = new XPathParser(script, false, configuration.getVariables(), new XMLMapperEntityResolver());

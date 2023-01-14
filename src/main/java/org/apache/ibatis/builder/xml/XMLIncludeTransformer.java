@@ -60,12 +60,30 @@ public class XMLIncludeTransformer {
    */
   private void applyIncludes(Node source, final Properties variablesContext, boolean included) {
     if ("include".equals(source.getNodeName())) {
+      /**
+       * 从 {@link Configuration#sqlFragments} 查找片段
+       *
+       * 注：找不到就抛出 IncompleteElementException 异常，说明所引用的片段还没解析
+       * */
       Node toInclude = findSqlFragment(getStringAttribute(source, "refid"), variablesContext);
+      /**
+       * 扩展 属性信息
+       * <include refid="">
+       *  <property name="" value=""/>
+       * </include>
+       * */
       Properties toIncludeContext = getVariablesContext(source, variablesContext);
+      // 递归处理 sql片段，处理的结果是将字符串中的 ${} 替换成 variablesContext 变量的值
       applyIncludes(toInclude, toIncludeContext, true);
+
+      // 不是同一个dom的。即不是同一个文件
       if (toInclude.getOwnerDocument() != source.getOwnerDocument()) {
+        /**
+         * todo 没看懂，这些api是做啥的
+         * */
         toInclude = source.getOwnerDocument().importNode(toInclude, true);
       }
+      // 替换原来的内容，将 source 替换成 toInclude
       source.getParentNode().replaceChild(toInclude, source);
       while (toInclude.hasChildNodes()) {
         toInclude.getParentNode().insertBefore(toInclude.getFirstChild(), toInclude);
@@ -73,15 +91,18 @@ public class XMLIncludeTransformer {
       toInclude.getParentNode().removeChild(toInclude);
     } else if (source.getNodeType() == Node.ELEMENT_NODE) {
       if (included && !variablesContext.isEmpty()) {
+        // 替换变量值，可以使用 ${name} 引用变量
         // replace variables in attribute values
         NamedNodeMap attributes = source.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
           Node attr = attributes.item(i);
+          // 替换值
           attr.setNodeValue(PropertyParser.parse(attr.getNodeValue(), variablesContext));
         }
       }
       NodeList children = source.getChildNodes();
       for (int i = 0; i < children.getLength(); i++) {
+        // 递归处理子标签
         applyIncludes(children.item(i), variablesContext, included);
       }
     } else if (included && (source.getNodeType() == Node.TEXT_NODE || source.getNodeType() == Node.CDATA_SECTION_NODE)

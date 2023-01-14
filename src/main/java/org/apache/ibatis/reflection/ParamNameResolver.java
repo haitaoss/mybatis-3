@@ -125,16 +125,19 @@ public class ParamNameResolver {
       return null;
     } else if (!hasParamAnnotation && paramCount == 1) {
       Object value = args[names.firstKey()];
+      // 转成Map
       return wrapToMapIfCollection(value, useActualParamName ? names.get(0) : null);
     } else {
       final Map<String, Object> param = new ParamMap<>();
       int i = 0;
       for (Map.Entry<Integer, String> entry : names.entrySet()) {
+        // {name:value}
         param.put(entry.getValue(), args[entry.getKey()]);
         // add generic param names (param1, param2, ...)
         final String genericParamName = GENERIC_NAME_PREFIX + (i + 1);
         // ensure not to overwrite parameter named with @Param
         if (!names.containsValue(genericParamName)) {
+          // {param1:value}
           param.put(genericParamName, args[entry.getKey()]);
         }
         i++;

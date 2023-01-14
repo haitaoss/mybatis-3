@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.ibatis.builder.annotation.MapperAnnotationBuilder;
+import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.io.ResolverUtil;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSession;
@@ -58,13 +59,27 @@ public class MapperRegistry {
   }
 
   public <T> void addMapper(Class<T> type) {
+    // 是接口才处理
     if (type.isInterface()) {
+      /**
+       * 已经添加过就报错。这是为了防止重复的添加。
+       * */
       if (hasMapper(type)) {
         throw new BindingException("Type " + type + " is already known to the MapperRegistry.");
       }
       boolean loadCompleted = false;
       try {
+        // 记录
         knownMappers.put(type, new MapperProxyFactory<>(type));
+        /**
+         * 1. 先根据类全名查询资源文件，存在资源文件就进行xml的解析
+         *    cn.haitaoss.AMapper.class ---> cn/haitaoss/AMapper.xml ---> 读取文件，解析xml ---> {@link XMLMapperBuilder#parse()}
+         *
+         * 2. 解析接口方法上面的注解，有对应的注解 就解析成对应的实体，最终都会存到 Configuration 对象中
+         *
+         * 注：一个方法，要么通过xml的方式写具体的sql，要么通过注解的方式，只能选其一。
+         *    具体是因为这个put方法会校验，存在了就报错 {@link Configuration.StrictMap#put(String, Object)}
+         * */
         // It's important that the type is added before the parser is run
         // otherwise the binding may automatically be attempted by the
         // mapper parser. If the type is already known, it won't try.
@@ -72,6 +87,7 @@ public class MapperRegistry {
         parser.parse();
         loadCompleted = true;
       } finally {
+        // 未加载成功就移除
         if (!loadCompleted) {
           knownMappers.remove(type);
         }

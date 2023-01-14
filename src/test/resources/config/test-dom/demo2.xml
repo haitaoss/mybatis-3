@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper >
+<mapper namespace="org.mybatis.example.BlogMapper">
+    <select id="selectBlog" resultType="cn.haitaoss.Blog">
+        select *
+        from t1
+        where name = #{id}
+        <include refid="1"/>
+    </select>
+</mapper>

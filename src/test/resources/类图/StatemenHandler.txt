@@ -1,0 +1,111 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class BaseStatementHandler {
+  # objectFactory: ObjectFactory
+  # resultSetHandler: ResultSetHandler
+  # typeHandlerRegistry: TypeHandlerRegistry
+  # boundSql: BoundSql
+  # parameterHandler: ParameterHandler
+  # rowBounds: RowBounds
+  # mappedStatement: MappedStatement
+  # configuration: Configuration
+  # executor: Executor
+  # closeStatement(Statement): void
+  # instantiateStatement(Connection): Statement
+  + getBoundSql(): BoundSql
+  # generateKeys(Object): void
+  + prepare(Connection, Integer): Statement
+  # setStatementTimeout(Statement, Integer): void
+  # setFetchSize(Statement): void
+  + getParameterHandler(): ParameterHandler
+}
+class CallableStatementHandler {
+  + update(Statement): int
+  + query(Statement, ResultHandler): List<E>
+  + batch(Statement): void
+  + queryCursor(Statement): Cursor<E>
+  # instantiateStatement(Connection): Statement
+  + parameterize(Statement): void
+  - registerOutputParameters(CallableStatement): void
+}
+class DefaultParameterHandler {
+  - typeHandlerRegistry: TypeHandlerRegistry
+  - mappedStatement: MappedStatement
+  - configuration: Configuration
+  - boundSql: BoundSql
+  - parameterObject: Object
+  + getParameterObject(): Object
+  + setParameters(PreparedStatement): void
+}
+class DefaultResultSetHandler {
+  - configuration: Configuration
+
+  - executor: Executor
+
+  - resultHandler: ResultHandler<?>
+  - parameterHandler: ParameterHandler
+  - mappedStatement: MappedStatement
+  - handleResultSet(ResultSetWrapper, ResultMap, List<Object>, ResultMapping): void
+  + handleResultSets(Statement): List<Object>
+}
+interface ParameterHandler << interface >> {
+  + setParameters(PreparedStatement): void
+  + getParameterObject(): Object
+}
+class PreparedStatementHandler {
+  + update(Statement): int
+  # instantiateStatement(Connection): Statement
+  + queryCursor(Statement): Cursor<E>
+  + query(Statement, ResultHandler): List<E>
+  + parameterize(Statement): void
+  + batch(Statement): void
+}
+interface ResultSetHandler << interface >> {
+  + handleCursorResultSets(Statement): Cursor<E>
+  + handleResultSets(Statement): List<E>
+  + handleOutputParameters(CallableStatement): void
+}
+class RoutingStatementHandler {
+  - delegate: StatementHandler
+  + prepare(Connection, Integer): Statement
+  + getParameterHandler(): ParameterHandler
+  + getBoundSql(): BoundSql
+  + queryCursor(Statement): Cursor<E>
+  + query(Statement, ResultHandler): List<E>
+  + parameterize(Statement): void
+  + update(Statement): int
+  + batch(Statement): void
+}
+class SimpleStatementHandler {
+  + update(Statement): int
+  + batch(Statement): void
+  + query(Statement, ResultHandler): List<E>
+  + queryCursor(Statement): Cursor<E>
+  + parameterize(Statement): void
+  # instantiateStatement(Connection): Statement
+}
+interface StatementHandler << interface >> {
+  + batch(Statement): void
+  + parameterize(Statement): void
+  + queryCursor(Statement): Cursor<E>
+  + query(Statement, ResultHandler): List<E>
+  + prepare(Connection, Integer): Statement
+  + getBoundSql(): BoundSql
+  + update(Statement): int
+  + getParameterHandler(): ParameterHandler
+}
+
+BaseStatementHandler      -[#008200,dashed]-^  StatementHandler
+CallableStatementHandler  -[#000082,plain]-^  BaseStatementHandler
+DefaultParameterHandler   -[#008200,dashed]-^  ParameterHandler
+DefaultResultSetHandler   -[#008200,dashed]-^  ResultSetHandler
+PreparedStatementHandler  -[#000082,plain]-^  BaseStatementHandler
+RoutingStatementHandler   -[#008200,dashed]-^  StatementHandler
+SimpleStatementHandler    -[#000082,plain]-^  BaseStatementHandler
+BaseStatementHandler *-- ParameterHandler
+BaseStatementHandler *-- ResultSetHandler
+@enduml

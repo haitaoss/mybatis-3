@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!-- 加载属性文件，可以使用 ${key} 的方式引用属性值 -->
+    <properties resource="config/config.properties">
+        <!-- 设置属性，属性文件中设置了同名属性，会覆盖这里的值 -->
+        <property name="user" value="123456"/>
+        <property name="ext" value="msg"/>
+    </properties>
+    <!-- 全局设置相关的属性 -->
+    <settings>
+        <!-- 指定使用的日志实现框架 -->
+        <setting name="logImpl" value="SLF4J"/>
+        <!-- 自动映射，数据库下划线转驼峰 -->
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+    </settings>
+    <!--
+    类型别名
+    类型别名可为 Java 类型设置一个缩写名字。 它仅用于 XML 配置，意在降低冗余的全限定类名书写。
+    -->
+    <typeAliases>
+        <typeAlias type="java.lang.Integer" alias="int"/>
+        <package name="cn.haitaoss"/>
+    </typeAliases>
+    <!--
+    类型处理器
+    MyBatis 在设置预处理语句（PreparedStatement）中的参数或从结果集中取出一个值时， 都会用类型处理器将获取到的值以合适的方式转换成 Java 类型
+      -->
+    <typeHandlers>
+        <typeHandler handler="org.apache.ibatis.type.BooleanTypeHandler"/>
+        <package name="cn.haitaoss"/>
+    </typeHandlers>
+    <!-- 每次 MyBatis 创建结果对象的新实例时，它都会使用一个对象工厂（ObjectFactory）实例来完成实例化工作 -->
+    <objectFactory type="cn.haitaoss.ExampleObjectFactory"/>
+    <!-- MyBatis 允许你在映射语句执行过程中的某一点进行拦截调用 -->
+    <plugins>
+        <plugin interceptor="cn.haitaoss.TestPlugin">
+            <property name="someProperty" value="100"/>
+        </plugin>
+    </plugins>
+    <!-- 尽管可以配置多个环境，但每个 SqlSessionFactory 实例只能选择一种环境 -->
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="username" value="${user}"/>
+                <property name="password" value="${password}"/>
+                <property name="driver" value="${driverClass}"/>
+                <property name="url" value="${jdbcUrl}"/>
+            </dataSource>
+        </environment>
+    </environments>
+    <!-- MyBatis 可以根据不同的数据库厂商执行不同的语句，具体是啥厂商得看你配置的数据源
+
+     select、insert、update、delete 标签可以设置 databaseId 属性，
+     当 SqlSessionFactory 的数据源的数据库来决定 databaseId 是否满足
+     databaseId属性值可以使用下面设置的短名称来表示
+
+     -->
+    <databaseIdProvider type="DB_VENDOR">
+        <!--
+        定义短名称，可以在具体的映射文件使用短名称
+
+        获取数据源产品名称的伪代码：Connection.getMetaData().getDatabaseProductName()
+        -->
+        <property name="SQL Server" value="sqlserver"/>
+        <property name="DB2" value="db2"/>
+        <property name="Oracle" value="oracle"/>
+        <property name="MySQL" value="mysql_alias"/>
+    </databaseIdProvider>
+    <!-- 映射器 -->
+    <mappers>
+        <!-- 使用相对于类路径的资源引用 -->
+        <mapper resource="org/mybatis/example/BlogMapper.xml"/>
+        <!-- 使用完全限定资源定位符（URL） -->
+        <!--        <mapper url="file:///var/mappers/AuthorMapper.xml"/>-->
+        <!-- 使用映射器接口实现类的完全限定类名 -->
+        <!--        <mapper class="org.mybatis.builder.AuthorMapper"/>-->
+        <!-- 将包内的映射器接口全部注册为映射器 -->
+        <!--        <package name="org.mybatis.builder"/>-->
+    </mappers>
+</configuration>

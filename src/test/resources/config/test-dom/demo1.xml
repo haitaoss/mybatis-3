@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper >
+<mapper namespace="org.mybatis.example.BlogMapper">
+
+    <sql id="1">
+        <include refid="2">
+        <property name="" value=""/>
+        </include>
+    </sql>
+    <sql id="2">
+        <include refid="3"/>
+        <include refid="4"/>
+    </sql>
+    <sql id="3">
+select * from dual
+    </sql>
+    <sql id="4">
+        where 1 = 1
+    </sql>
+</mapper>

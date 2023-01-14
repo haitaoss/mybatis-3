@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!-- 加载属性文件，可以使用 ${key} 的方式引用属性值 -->
+    <properties resource="config/config.properties"/>
+    <!-- 全局设置相关的属性 -->
+    <settings>
+        <!-- 指定使用的日志实现框架 -->
+        <setting name="logImpl" value="SLF4J"/>
+        <!-- 自动映射，数据库下划线转驼峰 -->
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <!-- 关闭Mybatis缓存 -->
+        <!--                <setting name="cacheEnabled" value="false"/>-->
+        <!-- 设置缓存的级别 -->
+        <!--        <setting name="localCacheScope" value="STATEMENT"/>-->
+    </settings>
+
+    <plugins>
+        <plugin interceptor="cn.haitaoss.TestPlugin">
+            <!--            <property name="someProperty" value="100"/>-->
+        </plugin>
+        <plugin interceptor="cn.haitaoss.PrintSqlInterceptor"/>
+    </plugins>
+    <!-- 尽管可以配置多个环境，但每个 SqlSessionFactory 实例只能选择一种环境 -->
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="username" value="${user}"/>
+                <property name="password" value="${password}"/>
+                <property name="driver" value="${driverClass}"/>
+                <property name="url" value="${jdbcUrl}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!-- 映射器 -->
+    <mappers>
+        <!-- 使用相对于类路径的资源引用 -->
+        <!--        <mapper resource="cn/haitaoss/TestMapper.xml"/>-->
+        <!-- 使用映射器接口实现类的完全限定类名 -->
+        <!--        <mapper class="cn.haitaoss.TestMapper"/>-->
+        <!-- 将包内的映射器接口全部注册为映射器 -->
+        <package name="cn"/>
+    </mappers>
+</configuration>

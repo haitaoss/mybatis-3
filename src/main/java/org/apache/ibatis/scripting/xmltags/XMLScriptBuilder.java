@@ -66,6 +66,7 @@ public class XMLScriptBuilder extends BaseBuilder {
   public SqlSource parseScriptNode() {
     MixedSqlNode rootSqlNode = parseDynamicTags(context);
     SqlSource sqlSource;
+    // 有 ${} 或者有 mybatis的动态sql标签 就属于动态的
     if (isDynamic) {
       sqlSource = new DynamicSqlSource(configuration, rootSqlNode);
     } else {
@@ -79,6 +80,7 @@ public class XMLScriptBuilder extends BaseBuilder {
     NodeList children = node.getNode().getChildNodes();
     for (int i = 0; i < children.getLength(); i++) {
       XNode child = node.newXNode(children.item(i));
+      // 对于文本节点 存在 ${} 就是 动态的
       if (child.getNode().getNodeType() == Node.CDATA_SECTION_NODE || child.getNode().getNodeType() == Node.TEXT_NODE) {
         String data = child.getStringBody("");
         TextSqlNode textSqlNode = new TextSqlNode(data);
@@ -88,6 +90,7 @@ public class XMLScriptBuilder extends BaseBuilder {
         } else {
           contents.add(new StaticTextSqlNode(data));
         }
+      //  存在标签 就肯定是动态的。比如 <where/> 等等
       } else if (child.getNode().getNodeType() == Node.ELEMENT_NODE) { // issue #628
         String nodeName = child.getNode().getNodeName();
         NodeHandler handler = nodeHandlerMap.get(nodeName);
@@ -98,6 +101,7 @@ public class XMLScriptBuilder extends BaseBuilder {
         isDynamic = true;
       }
     }
+    // 返回
     return new MixedSqlNode(contents);
   }
 

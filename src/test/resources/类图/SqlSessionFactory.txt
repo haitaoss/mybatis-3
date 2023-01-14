@@ -1,0 +1,152 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class BaseExecutor {
+  # localCache: PerpetualCache
+  # transaction: Transaction
+  # configuration: Configuration
+  + rollback(boolean): void
+  + close(boolean): void
+  # doQuery(MappedStatement, Object, RowBounds, ResultHandler, BoundSql): List<E>
+  + update(MappedStatement, Object): int
+  # doUpdate(MappedStatement, Object): int
+  + query(MappedStatement, Object, RowBounds, ResultHandler): List<E>
+  + clearLocalCache(): void
+  + queryCursor(MappedStatement, Object, RowBounds): Cursor<E>
+  # doQueryCursor(MappedStatement, Object, RowBounds, BoundSql): Cursor<E>
+  + commit(boolean): void
+  + query(MappedStatement, Object, RowBounds, ResultHandler, CacheKey, BoundSql): List<E>
+}
+class CachingExecutor {
+  - delegate: Executor
+  - tcm: TransactionalCacheManager
+  + clearLocalCache(): void
+  + query(MappedStatement, Object, RowBounds, ResultHandler): List<E>
+  + close(boolean): void
+  + queryCursor(MappedStatement, Object, RowBounds): Cursor<E>
+  + rollback(boolean): void
+  + query(MappedStatement, Object, RowBounds, ResultHandler, CacheKey, BoundSql): List<E>
+  + createCacheKey(MappedStatement, Object, RowBounds, BoundSql): CacheKey
+  + update(MappedStatement, Object): int
+  + commit(boolean): void
+}
+class Configuration {
+  # cacheRefMap: Map<String, String>
+  # resultMaps: Map<String, ResultMap>
+  # keyGenerators: Map<String, KeyGenerator>
+  # languageRegistry: LanguageDriverRegistry
+  # environment: Environment
+  # caches: Map<String, Cache>
+  # typeAliasRegistry: TypeAliasRegistry
+  # interceptorChain: InterceptorChain
+  # parameterMaps: Map<String, ParameterMap>
+  # mapperRegistry: MapperRegistry
+  # mappedStatements: Map<String, MappedStatement>
+  # typeHandlerRegistry: TypeHandlerRegistry
+  + getMapper(Class<T>, SqlSession): T
+  + newExecutor(Transaction, ExecutorType): Executor
+  + addResultMap(ResultMap): void
+  + newExecutor(Transaction): Executor
+  + addParameterMap(ParameterMap): void
+  + addCache(Cache): void
+  + addMapper(Class<T>): void
+  + addMappers(String): void
+  + newStatementHandler(Executor, MappedStatement, Object, RowBounds, ResultHandler, BoundSql): StatementHandler
+  + newParameterHandler(MappedStatement, Object, BoundSql): ParameterHandler
+  + addMappedStatement(MappedStatement): void
+  + addInterceptor(Interceptor): void
+  + addCacheRef(String, String): void
+}
+class DefaultSqlSession {
+  - configuration: Configuration
+  - executor: Executor
+  + select(String, ResultHandler): void
+  + rollback(): void
+  + selectCursor(String, Object): Cursor<T>
+  + clearCache(): void
+  + select(String, Object, ResultHandler): void
+  + commit(): void
+  + getConnection(): Connection
+  + getMapper(Class<T>): T
+  + update(String, Object): int
+  + selectOne(String): T
+  + delete(String, Object): int
+  + close(): void
+  + commit(boolean): void
+}
+class DefaultSqlSessionFactory {
+  - configuration: Configuration
+  + openSession(ExecutorType): SqlSession
+}
+interface Executor << interface >> {
+  + NO_RESULT_HANDLER: ResultHandler
+  + createCacheKey(MappedStatement, Object, RowBounds, BoundSql): CacheKey
+  + clearLocalCache(): void
+  + close(boolean): void
+  + isCached(MappedStatement, CacheKey): boolean
+  + deferLoad(MappedStatement, MetaObject, String, CacheKey, Class<?>): void
+  + rollback(boolean): void
+  + setExecutorWrapper(Executor): void
+  + query(MappedStatement, Object, RowBounds, ResultHandler, CacheKey, BoundSql): List<E>
+  + flushStatements(): List<BatchResult>
+  + getTransaction(): Transaction
+  + query(MappedStatement, Object, RowBounds, ResultHandler): List<E>
+  + isClosed(): boolean
+  + queryCursor(MappedStatement, Object, RowBounds): Cursor<E>
+  + commit(boolean): void
+  + update(MappedStatement, Object): int
+}
+
+class SimpleExecutor {
+  + doUpdate(MappedStatement, Object): int
+  - prepareStatement(StatementHandler, Log): Statement
+  + doFlushStatements(boolean): List<BatchResult>
+  + doQuery(MappedStatement, Object, RowBounds, ResultHandler, BoundSql): List<E>
+  # doQueryCursor(MappedStatement, Object, RowBounds, BoundSql): Cursor<E>
+}
+interface SqlSession << interface >> {
+  + commit(): void
+  + rollback(boolean): void
+  + delete(String): int
+  + insert(String, Object): int
+  + getMapper(Class<T>): T
+  + select(String, Object, ResultHandler): void
+  + update(String, Object): int
+}
+interface SqlSessionFactory << interface >> {
+  + openSession(boolean): SqlSession
+  + openSession(ExecutorType, TransactionIsolationLevel): SqlSession
+  + openSession(Connection): SqlSession
+  + openSession(ExecutorType, Connection): SqlSession
+  + getConfiguration(): Configuration
+  + openSession(ExecutorType, boolean): SqlSession
+  + openSession(ExecutorType): SqlSession
+  + openSession(): SqlSession
+  + openSession(TransactionIsolationLevel): SqlSession
+}
+class SqlSessionFactoryBuilder {
+  + build(InputStream, Properties): SqlSessionFactory
+  + build(InputStream, String, Properties): SqlSessionFactory
+  + build(Reader, String): SqlSessionFactory
+  + build(Reader): SqlSessionFactory
+  + build(InputStream): SqlSessionFactory
+  + build(Reader, String, Properties): SqlSessionFactory
+  + build(Reader, Properties): SqlSessionFactory
+  + build(Configuration): SqlSessionFactory
+  + build(InputStream, String): SqlSessionFactory
+}
+
+BaseExecutor              -[#008200,dashed]-^  Executor
+CachingExecutor           -[#008200,dashed]-^  Executor
+DefaultSqlSession         -[#008200,dashed]-^  SqlSession
+DefaultSqlSessionFactory  -[#008200,dashed]-^  SqlSessionFactory
+SimpleExecutor            -[#000082,plain]-^  BaseExecutor
+DefaultSqlSessionFactory *--   DefaultSqlSession
+DefaultSqlSession *--   Executor
+DefaultSqlSession *--   Configuration
+SqlSessionFactoryBuilder *--   DefaultSqlSessionFactory
+
+@enduml
