@@ -16,6 +16,7 @@
 package org.apache.ibatis.scripting.xmltags;
 
 import org.apache.ibatis.builder.SqlSourceBuilder;
+import org.apache.ibatis.builder.StaticSqlSource;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.SqlSource;
 import org.apache.ibatis.session.Configuration;
@@ -25,25 +26,35 @@ import org.apache.ibatis.session.Configuration;
  */
 public class DynamicSqlSource implements SqlSource {
 
-  private final Configuration configuration;
-  private final SqlNode rootSqlNode;
+    private final Configuration configuration;
+    private final SqlNode rootSqlNode;
 
-  public DynamicSqlSource(Configuration configuration, SqlNode rootSqlNode) {
-    this.configuration = configuration;
-    this.rootSqlNode = rootSqlNode;
-  }
+    public DynamicSqlSource(Configuration configuration, SqlNode rootSqlNode) {
+        this.configuration = configuration;
+        this.rootSqlNode = rootSqlNode;
+    }
 
-  @Override
-  public BoundSql getBoundSql(Object parameterObject) {
-    DynamicContext context = new DynamicContext(configuration, parameterObject);
-    rootSqlNode.apply(context);
-    SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
-    Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
-    SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
-    BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
-    // 设置附加的参数
-    context.getBindings().forEach(boundSql::setAdditionalParameter);
-    return boundSql;
-  }
+    @Override
+    public BoundSql getBoundSql(Object parameterObject) {
+        DynamicContext context = new DynamicContext(configuration, parameterObject);
+        /**
+         * {@link MixedSqlNode#apply(DynamicContext)}
+         * {@link TextSqlNode#apply(DynamicContext)}
+         *
+         * 这一步是讲 ${name} 占位符替换成 具体的参数值，也就是字符串的拼接
+         * */
+        rootSqlNode.apply(context);
+        SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
+        Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
+        /**
+         * 这一步是将 #{name} 替换成 ?，并且将用到的参数值存到 {@link StaticSqlSource#parameterMappings} 属性中
+         * */
+        SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
+        BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+        // 设置附加的参数
+        context.getBindings()
+                .forEach(boundSql::setAdditionalParameter);
+        return boundSql;
+    }
 
 }

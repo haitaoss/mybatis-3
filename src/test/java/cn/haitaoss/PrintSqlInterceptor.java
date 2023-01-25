@@ -51,6 +51,7 @@ public class PrintSqlInterceptor implements Interceptor {
 
     private static void showSql(Configuration configuration, BoundSql boundSql, long time, String sqlId) {
         Object parameterObject = boundSql.getParameterObject();
+        // 拿到 ? 占位符 对应的参数信息
         List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
         //替换空格、换行、tab缩进等
         String sql = boundSql.getSql()
