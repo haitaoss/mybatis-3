@@ -27,6 +27,7 @@ import org.apache.ibatis.cursor.Cursor;
 import org.apache.ibatis.executor.keygen.Jdbc3KeyGenerator;
 import org.apache.ibatis.executor.keygen.KeyGenerator;
 import org.apache.ibatis.executor.keygen.NoKeyGenerator;
+import org.apache.ibatis.executor.statement.PreparedStatementHandler;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -74,6 +75,13 @@ public class BatchExecutor extends BaseExecutor {
       statementList.add(stmt);
       batchResultList.add(new BatchResult(ms, sql, parameterObject));
     }
+    /**
+     * 关键地方在这里，只是 ps.addBatch() 并没有执行sql
+     *    {@link PreparedStatementHandler#batch(Statement)}
+     *
+     * 真正执行sql的地方
+     *    {@link BatchExecutor#doFlushStatements(boolean)}
+     * */
     handler.batch(stmt);
     return BATCH_UPDATE_RETURN_VALUE;
   }
@@ -120,6 +128,7 @@ public class BatchExecutor extends BaseExecutor {
         applyTransactionTimeout(stmt);
         BatchResult batchResult = batchResultList.get(i);
         try {
+          // 执行真正的执行批处理
           batchResult.setUpdateCounts(stmt.executeBatch());
           MappedStatement ms = batchResult.getMappedStatement();
           List<Object> parameterObjects = batchResult.getParameterObjects();

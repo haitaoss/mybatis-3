@@ -148,7 +148,15 @@ public class ResultSetWrapper {
     List<String> mappedColumnNames = new ArrayList<>();
     List<String> unmappedColumnNames = new ArrayList<>();
     final String upperColumnPrefix = columnPrefix == null ? null : columnPrefix.toUpperCase(Locale.ENGLISH);
+    // 这个就是写了 <resultMap id="" type=""></resultMap> 标签设置的信息
     final Set<String> mappedColumns = prependPrefixes(resultMap.getMappedColumns(), upperColumnPrefix);
+    /**
+     * columnNames 是在构造器的时候设置的，其实就是查询出的列名
+     *
+     * 比如：
+     *    select n as 'name', d as 'address' from t1
+     *    columnNames = [name,address]
+     * */
     for (String columnName : columnNames) {
       final String upperColumnName = columnName.toUpperCase(Locale.ENGLISH);
       if (mappedColumns.contains(upperColumnName)) {

@@ -15,7 +15,7 @@ import java.util.Map;
  *
  */
 @CacheNamespaceRef(name = "cn.haitaoss.TestMapper")
-public interface TestMapper extends BaseMapper{
+public interface TestMapper extends BaseMapper {
     // 注：使用 <script> 标签，里面的内容就可以想xml的一样，支持动态标签
     @Select("<script> select * from t1 <where> and 1 = 1 </where> </script>")
     // @Select("select * from t1 <where> and 1= 1</where>") // 这是不可以的
@@ -28,4 +28,8 @@ public interface TestMapper extends BaseMapper{
     @Select(" select * from t1 where name = #{name} ")
         //    @Select("<script>  select * from t1 where name = #{name} </script>")
     List<Map<String, String>> listByName2(String name);
+
+    @Select(" select t1.name, 'default' AS 'a_ddre_SS' from t1 ")
+        //    @Select("<script>  select * from t1 where name = #{name} </script>")
+    List<Person> list3();
 }

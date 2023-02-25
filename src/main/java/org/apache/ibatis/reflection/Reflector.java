@@ -237,12 +237,14 @@ public class Reflector {
 
   private void addFields(Class<?> clazz) {
     Field[] fields = clazz.getDeclaredFields();
+    // 遍历所有的字段
     for (Field field : fields) {
       if (!setMethods.containsKey(field.getName())) {
         // issue #379 - removed the check for final because JDK 1.5 allows
         // modification of final fields through reflection (JSR-133). (JGB)
         // pr #16 - final static can only be set by the classloader
         int modifiers = field.getModifiers();
+        // 不是 final 不是静态的才处理
         if (!(Modifier.isFinal(modifiers) && Modifier.isStatic(modifiers))) {
           addSetField(field);
         }
@@ -252,11 +254,13 @@ public class Reflector {
       }
     }
     if (clazz.getSuperclass() != null) {
+      // 递归处理父类
       addFields(clazz.getSuperclass());
     }
   }
 
   private void addSetField(Field field) {
+    // 不是非法的属性名才处理
     if (isValidPropertyName(field.getName())) {
       setMethods.put(field.getName(), new SetFieldInvoker(field));
       Type fieldType = TypeParameterResolver.resolveFieldType(field, type);

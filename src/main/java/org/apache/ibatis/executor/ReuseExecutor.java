@@ -48,7 +48,14 @@ public class ReuseExecutor extends BaseExecutor {
   public int doUpdate(MappedStatement ms, Object parameter) throws SQLException {
     Configuration configuration = ms.getConfiguration();
     StatementHandler handler = configuration.newStatementHandler(this, ms, parameter, RowBounds.DEFAULT, null, null);
+    /**
+     * 大致逻辑就是读 {@link ReuseExecutor#statementMap} 拿到 Statement 实现复用
+     * */
     Statement stmt = prepareStatement(handler, ms.getStatementLog());
+    /**
+     * 没有关闭 stmt 从而实现重复使用。
+     * 只会在刷新的时候才会关闭
+     * */
     return handler.update(stmt);
   }
 

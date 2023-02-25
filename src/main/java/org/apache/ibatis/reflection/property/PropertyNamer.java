@@ -29,6 +29,7 @@ public final class PropertyNamer {
   }
 
   public static String methodToProperty(String name) {
+    // 移除 getter setter 方法前缀
     if (name.startsWith("is")) {
       name = name.substring(2);
     } else if (name.startsWith("get") || name.startsWith("set")) {
@@ -38,6 +39,7 @@ public final class PropertyNamer {
     }
 
     if (name.length() == 1 || (name.length() > 1 && !Character.isUpperCase(name.charAt(1)))) {
+      // 首字母大写
       name = name.substring(0, 1).toLowerCase(Locale.ENGLISH) + name.substring(1);
     }
 

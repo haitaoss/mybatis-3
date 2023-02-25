@@ -4,25 +4,28 @@ import org.apache.ibatis.binding.MapperProxy;
 import org.apache.ibatis.binding.MapperProxyFactory;
 import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.apache.ibatis.datasource.pooled.PooledDataSource;
+import org.apache.ibatis.executor.BatchExecutor;
+import org.apache.ibatis.executor.ReuseExecutor;
+import org.apache.ibatis.executor.resultset.DefaultResultSetHandler;
+import org.apache.ibatis.executor.resultset.ResultSetWrapper;
 import org.apache.ibatis.io.ResolverUtil;
 import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.mapping.Environment;
+import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.mapping.ResultMap;
+import org.apache.ibatis.mapping.ResultMapping;
 import org.apache.ibatis.parsing.PropertyParser;
 import org.apache.ibatis.parsing.XPathParser;
-import org.apache.ibatis.session.Configuration;
-import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+import org.apache.ibatis.reflection.MetaObject;
+import org.apache.ibatis.session.*;
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.w3c.dom.Node;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Properties;
-import java.util.Set;
+import java.sql.Statement;
+import java.util.*;
 
 /**
  * @author haitao.chen
@@ -59,15 +62,73 @@ public class Test {
         // 东西挺多的，会解析 Mapper
         sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream/*,"enviromentID"*/);
 
+        test_resultSet_mapping();
+        // test_batch_executor();
         // 配置信息，可以看到具体配置了啥东西,还可以动态添加 Plugin、Mapper
         //        Configuration configuration = sqlSessionFactory.getConfiguration();
 
         // test_first_cache();
         // test_second_cache();
-         test_plugin();
+        //  test_plugin();
         // test_mapper();
         // test_dynamic_reg_Mapper();
         // test_dynamic_method();
+    }
+
+    private static void test_reuse_executor() {
+        SqlSession sqlSession1 = sqlSessionFactory.openSession();
+        SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.REUSE);
+        /**
+         * 执行sql是复用一个 Statement
+         * {@link ReuseExecutor#doUpdate(MappedStatement, Object)}
+         * */
+        sqlSession.insert("insert", "haitao_insert");
+        sqlSession.insert("insert", "haitao_insert2");
+        sqlSession.insert("insert", "haitao_insert3");
+        /**
+         * 提交才会关闭 Statement
+         * */
+        sqlSession.commit(); // 需要提交才会真正的执行sql
+        System.out.println("=================");
+        System.out.println(sqlSession1.getMapper(TestMapper.class).list());
+    }
+
+    private static void test_resultSet_mapping() {
+        /**
+         * {@link DefaultResultSetHandler#handleResultSets(Statement)}
+         * {@link DefaultResultSetHandler#handleResultSet(ResultSetWrapper, ResultMap, List, ResultMapping)}
+         * {@link DefaultResultSetHandler#handleRowValues(ResultSetWrapper, ResultMap, ResultHandler, RowBounds, ResultMapping)}
+         * {@link DefaultResultSetHandler#handleRowValuesForSimpleResultMap(ResultSetWrapper, ResultMap, ResultHandler, RowBounds, ResultMapping)}
+         * {@link DefaultResultSetHandler#getRowValue(ResultSetWrapper, ResultMap, String)}
+         * {@link DefaultResultSetHandler#applyAutomaticMappings(ResultSetWrapper, ResultMap, MetaObject, String)}
+         *      {@link DefaultResultSetHandler#createAutomaticMappings(ResultSetWrapper, ResultMap, MetaObject, String)}
+         * */
+        Configuration configuration = sqlSessionFactory.getConfiguration();
+        configuration.setMapUnderscoreToCamelCase(true);
+        // configuration.setMapUnderscoreToCamelCase(false);
+
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        TestMapper mapper = sqlSession.getMapper(TestMapper.class);
+        List<Person> people = mapper.list3();
+        System.out.println("people = " + people);
+    }
+
+    private static void test_batch_executor() {
+        SqlSession sqlSession1 = sqlSessionFactory.openSession();
+        SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH);
+        /**
+         * 只是 Statement.addBatch(sql) 并没有执行sql
+         * {@link BatchExecutor#doUpdate(MappedStatement, Object)}
+         * */
+        sqlSession.insert("insert", "haitao_insert");
+        sqlSession.insert("insert", "haitao_insert2");
+        sqlSession.insert("insert", "haitao_insert3");
+        /**
+         * 提交才会执行sql
+         * */
+        sqlSession.commit(); // 需要提交才会真正的执行sql
+        System.out.println("=================");
+        System.out.println(sqlSession1.getMapper(TestMapper.class).list());
     }
 
     public static void config() throws Exception {

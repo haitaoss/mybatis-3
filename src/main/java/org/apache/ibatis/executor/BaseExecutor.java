@@ -256,6 +256,7 @@ public abstract class BaseExecutor implements Executor {
             throw new ExecutorException("Cannot commit, transaction is already closed");
         }
         clearLocalCache();
+        // 刷新，比如 BatchExecutor 会在这里执行批处理上去了
         flushStatements();
         if (required) {
             transaction.commit();

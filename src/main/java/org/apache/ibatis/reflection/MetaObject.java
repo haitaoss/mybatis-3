@@ -53,6 +53,7 @@ public class MetaObject {
     } else if (object instanceof Collection) {
       this.objectWrapper = new CollectionWrapper(this, (Collection) object);
     } else {
+      // 普通的 JavaBean
       this.objectWrapper = new BeanWrapper(this, object);
     }
   }
@@ -82,6 +83,10 @@ public class MetaObject {
   }
 
   public String findProperty(String propName, boolean useCamelCaseMapping) {
+    /**
+     * {@link MetaObject#MetaObject(Object, ObjectFactory, ObjectWrapperFactory, ReflectorFactory)}
+     * 普通类型是 BeanWrapper
+     * */
     return objectWrapper.findProperty(propName, useCamelCaseMapping);
   }
 

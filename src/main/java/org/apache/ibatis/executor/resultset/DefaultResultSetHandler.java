@@ -35,6 +35,7 @@ import org.apache.ibatis.reflection.MetaClass;
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.reflection.ReflectorFactory;
 import org.apache.ibatis.reflection.factory.ObjectFactory;
+import org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory;
 import org.apache.ibatis.session.*;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.TypeHandler;
@@ -189,8 +190,9 @@ public class DefaultResultSetHandler implements ResultSetHandler {
         // 还有
         while (rsw != null && resultMapCount > resultSetCount) {
             ResultMap resultMap = resultMaps.get(resultSetCount);
+            // 这里就是会处理 结果集的映射，这一步就会完成一个结果集的映射了
             handleResultSet(rsw, resultMap, multipleResults, null);
-            // 获取下一条记录
+            // 获取下一个结果集
             rsw = getNextResultSet(stmt);
             cleanUpAfterHandlingResultSet();
             // 指针
@@ -303,6 +305,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
             } else {
                 if (resultHandler == null) {
                     DefaultResultHandler defaultResultHandler = new DefaultResultHandler(objectFactory);
+                    // 处理原始值
                     handleRowValues(rsw, resultMap, defaultResultHandler, rowBounds, null);
                     multipleResults.add(defaultResultHandler.getResultList());
                 } else {
@@ -331,6 +334,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
             checkResultHandler();
             handleRowValuesForNestedResultMap(rsw, resultMap, resultHandler, rowBounds, parentMapping);
         } else {
+            // 处理原始值 映射到 resultMap
             handleRowValuesForSimpleResultMap(rsw, resultMap, resultHandler, rowBounds, parentMapping);
         }
     }
@@ -355,9 +359,13 @@ public class DefaultResultSetHandler implements ResultSetHandler {
         DefaultResultContext<Object> resultContext = new DefaultResultContext<>();
         ResultSet resultSet = rsw.getResultSet();
         skipRows(resultSet, rowBounds);
+        // 遍历结果集
         while (shouldProcessMoreRows(resultContext, rowBounds) && !resultSet.isClosed() && resultSet.next()) {
+            // 处理一下，看看是否有 Discriminator
             ResultMap discriminatedResultMap = resolveDiscriminatedResultMap(resultSet, resultMap, null);
+            // 返回的就是映射完结果的JavaBean
             Object rowValue = getRowValue(rsw, discriminatedResultMap, null);
+            // 将属性值记录到 resultHandler 中
             storeObject(resultHandler, resultContext, rowValue, parentMapping, resultSet);
         }
     }
@@ -403,13 +411,30 @@ public class DefaultResultSetHandler implements ResultSetHandler {
 
     private Object getRowValue(ResultSetWrapper rsw, ResultMap resultMap, String columnPrefix) throws SQLException {
         final ResultLoaderMap lazyLoader = new ResultLoaderMap();
+        // 简单实例化出 JavaBean
         Object rowValue = createResultObject(rsw, resultMap, lazyLoader, columnPrefix);
         if (rowValue != null && !hasTypeHandlerForResultObject(rsw, resultMap.getType())) {
+            /**
+             * 将 JavaBean 装饰成 MetaObject。
+             * 目的是使用 MetaObject 的api设置属性
+             * */
             final MetaObject metaObject = configuration.newMetaObject(rowValue);
             boolean foundValues = this.useConstructorMappings;
+            // 开启了自动映射
             if (shouldApplyAutomaticMappings(resultMap, false)) {
+                /**
+                 * 1. 收集 不包含在 resultMap 中 查询的列
+                 * 2. 对列名进行处理
+                 *      若 configuration.isMapUnderscoreToCamelCase() == true 就对列名除去下划线
+                 *
+                 * 3. 列名.大写 == 属性名.大写 就构造出 UnMappedColumnAutoMapping
+                 * 4. 遍历 UnMappedColumnAutoMapping 实现将列值设置到属性中
+                 * */
                 foundValues = applyAutomaticMappings(rsw, resultMap, metaObject, columnPrefix) || foundValues;
             }
+            /**
+             * 处理 <resultMap id="" type=""></resultMap> 的
+             * */
             foundValues = applyPropertyMappings(rsw, resultMap, metaObject, lazyLoader, columnPrefix) || foundValues;
             foundValues = lazyLoader.size() > 0 || foundValues;
             rowValue = foundValues || configuration.isReturnInstanceForEmptyRow() ? rowValue : null;
@@ -477,10 +502,13 @@ public class DefaultResultSetHandler implements ResultSetHandler {
 
     private boolean applyPropertyMappings(ResultSetWrapper rsw, ResultMap resultMap, MetaObject metaObject,
                                           ResultLoaderMap lazyLoader, String columnPrefix) throws SQLException {
+        // 映射的列名
         final List<String> mappedColumnNames = rsw.getMappedColumnNames(resultMap, columnPrefix);
         boolean foundValues = false;
         final List<ResultMapping> propertyMappings = resultMap.getPropertyResultMappings();
+        // 遍历
         for (ResultMapping propertyMapping : propertyMappings) {
+            // 拼接前缀得到 column
             String column = prependPrefix(propertyMapping.getColumn(), columnPrefix);
             if (propertyMapping.getNestedResultMapId() != null) {
                 // the user added a column attribute to a nested result map, ignore it
@@ -488,6 +516,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
             }
             if (propertyMapping.isCompositeResult() || (column != null && mappedColumnNames.contains(
                     column.toUpperCase(Locale.ENGLISH))) || propertyMapping.getResultSet() != null) {
+                // 从 rsw.getResultSet() 获取 列名对应的值
                 Object value = getPropertyMappingValue(
                         rsw.getResultSet(), metaObject, propertyMapping, lazyLoader, columnPrefix);
                 // issue #541 make property optional
@@ -501,6 +530,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
                 if (value != null) {
                     foundValues = true;
                 }
+                // 将值设置给 JavaBean
                 if (value != null || (configuration.isCallSettersOnNulls() && !metaObject.getSetterType(property)
                         .isPrimitive())) {
                     // gcode issue #377, call setter on nulls (value is not 'found')
@@ -529,15 +559,20 @@ public class DefaultResultSetHandler implements ResultSetHandler {
                                                                     MetaObject metaObject,
                                                                     String columnPrefix) throws SQLException {
         final String mapKey = resultMap.getId() + ":" + columnPrefix;
+        // 查询缓存
         List<UnMappedColumnAutoMapping> autoMapping = autoMappingsCache.get(mapKey);
         if (autoMapping == null) {
             autoMapping = new ArrayList<>();
+            /**
+             * 返回没有使用 <resultMap id="" type=""></resultMap> 映射的列名
+             * */
             final List<String> unmappedColumnNames = rsw.getUnmappedColumnNames(resultMap, columnPrefix);
             // Remove the entry to release the memory
             List<String> mappedInConstructorAutoMapping = constructorAutoMappingColumns.remove(mapKey);
             if (mappedInConstructorAutoMapping != null) {
                 unmappedColumnNames.removeAll(mappedInConstructorAutoMapping);
             }
+            // 遍历未映射的列名
             for (String columnName : unmappedColumnNames) {
                 String propertyName = columnName;
                 if (columnPrefix != null && !columnPrefix.isEmpty()) {
@@ -545,19 +580,36 @@ public class DefaultResultSetHandler implements ResultSetHandler {
                     // ignore columns without the prefix.
                     if (columnName.toUpperCase(Locale.ENGLISH)
                             .startsWith(columnPrefix)) {
+                        // 移除前缀
                         propertyName = columnName.substring(columnPrefix.length());
                     } else {
                         continue;
                     }
                 }
+                /**
+                 * 使用 metaObject 查找属性名。
+                 *
+                 * 若 metaObject 装饰的是 普通的JavaBean
+                 *  {@link MetaObject#MetaObject(Object, ObjectFactory, ObjectWrapperFactory, ReflectorFactory)}
+                 *
+                 * 第一个参数：propertyName 是列名
+                 * 第二个参数： isMapUnderscoreToCamelCase == true 表示会对 列名做处理，替换下划线为空字符串
+                 * 只要 属性名.toUpperCase() == 列名.toUpperCase() 表示匹配了，返回对应JavaBean的属性名
+                 *
+                 * 注：metaObject 是 要映射的JavaBean的装饰对象
+                 * */
                 final String property = metaObject.findProperty(
-                        propertyName, configuration.isMapUnderscoreToCamelCase());
+                        propertyName, configuration.isMapUnderscoreToCamelCase()); // 全局属性，这里只是替换下划线为空字符串
+                // 该属性存在setter方法
                 if (property != null && metaObject.hasSetter(property)) {
+                    // 这个属性设置了 <resultMap id="" type=""></resultMap> 就跳过
                     if (resultMap.getMappedProperties()
                             .contains(property)) {
                         continue;
                     }
+                    // 拿到类型
                     final Class<?> propertyType = metaObject.getSetterType(property);
+                    // 存在处理器
                     if (typeHandlerRegistry.hasTypeHandler(propertyType, rsw.getJdbcType(columnName))) {
                         final TypeHandler<?> typeHandler = rsw.getTypeHandler(propertyType, columnName);
                         autoMapping.add(new UnMappedColumnAutoMapping(columnName, property, typeHandler,
@@ -572,6 +624,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
                             .doAction(mappedStatement, columnName, (property != null) ? property : propertyName, null);
                 }
             }
+            // 记录到缓存
             autoMappingsCache.put(mapKey, autoMapping);
         }
         return autoMapping;
@@ -579,15 +632,27 @@ public class DefaultResultSetHandler implements ResultSetHandler {
 
     private boolean applyAutomaticMappings(ResultSetWrapper rsw, ResultMap resultMap, MetaObject metaObject,
                                            String columnPrefix) throws SQLException {
+        /**
+         * 生成 未知列名的 UnMappedColumnAutoMapping
+         *
+         * 1. 遍历查询的列名，收集出没有使用 <resultMap id="" type=""></resultMap> 处理的列名
+         * 2. 列名.toUppercase() == 属性名.toUppercase() 就构造出 UnMappedColumnAutoMapping
+         *      注：
+         *          - 如果configuration开启了下划线转驼峰，那么会对列名去除下划线 在进行匹配。
+         *          - 匹配时忽略大小写的
+         * */
         List<UnMappedColumnAutoMapping> autoMapping = createAutomaticMappings(rsw, resultMap, metaObject, columnPrefix);
         boolean foundValues = false;
+        // 不是空
         if (!autoMapping.isEmpty()) {
             for (UnMappedColumnAutoMapping mapping : autoMapping) {
+                // 拿到属性值
                 final Object value = mapping.typeHandler.getResult(rsw.getResultSet(), mapping.column);
                 if (value != null) {
                     foundValues = true;
                 }
                 if (value != null || (configuration.isCallSettersOnNulls() && !mapping.primitive)) {
+                    // 回调setter 方法设置属性值
                     // gcode issue #377, call setter on nulls (value is not 'found')
                     metaObject.setValue(mapping.property, value);
                 }
@@ -658,6 +723,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
         this.useConstructorMappings = false; // reset previous mapping result
         final List<Class<?>> constructorArgTypes = new ArrayList<>();
         final List<Object> constructorArgs = new ArrayList<>();
+        // 实例化出JavaBean
         Object resultObject = createResultObject(rsw, resultMap, constructorArgTypes, constructorArgs, columnPrefix);
         if (resultObject != null && !hasTypeHandlerForResultObject(rsw, resultMap.getType())) {
             final List<ResultMapping> propertyMappings = resultMap.getPropertyResultMappings();

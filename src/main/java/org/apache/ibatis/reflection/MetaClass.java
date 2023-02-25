@@ -55,6 +55,7 @@ public class MetaClass {
 
   public String findProperty(String name, boolean useCamelCaseMapping) {
     if (useCamelCaseMapping) {
+      // 移除下划线
       name = name.replace("_", "");
     }
     return findProperty(name);
@@ -169,6 +170,7 @@ public class MetaClass {
   }
 
   private StringBuilder buildProperty(String name, StringBuilder builder) {
+    // 处理name 包含 . 的情况
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
       String propertyName = reflector.findPropertyName(prop.getName());
@@ -179,6 +181,7 @@ public class MetaClass {
         metaProp.buildProperty(prop.getChildren(), builder);
       }
     } else {
+      // name 是select查询的列名，返回的是JavaBean的属性名
       String propertyName = reflector.findPropertyName(name);
       if (propertyName != null) {
         builder.append(propertyName);
