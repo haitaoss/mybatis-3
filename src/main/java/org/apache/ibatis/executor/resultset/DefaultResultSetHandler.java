@@ -437,6 +437,11 @@ public class DefaultResultSetHandler implements ResultSetHandler {
              * */
             foundValues = applyPropertyMappings(rsw, resultMap, metaObject, lazyLoader, columnPrefix) || foundValues;
             foundValues = lazyLoader.size() > 0 || foundValues;
+           /**
+            * 找不到值 且 没有开启isReturnInstanceForEmptyRow 那就返回null
+            *
+            * Tips：说白了就是查询的列 无法映射到 rowValue 中，是否应该返回null
+            * */
             rowValue = foundValues || configuration.isReturnInstanceForEmptyRow() ? rowValue : null;
         }
         return rowValue;
@@ -649,6 +654,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
                 // 拿到属性值
                 final Object value = mapping.typeHandler.getResult(rsw.getResultSet(), mapping.column);
                 if (value != null) {
+                    // 标记为true
                     foundValues = true;
                 }
                 if (value != null || (configuration.isCallSettersOnNulls() && !mapping.primitive)) {
